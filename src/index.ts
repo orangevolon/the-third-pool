@@ -1,4 +1,4 @@
-import { Canvas } from './Canvas';
+import { Scene } from './components/Scene';
 
 function main() {
   const app = document.getElementById('app');
@@ -7,7 +7,7 @@ function main() {
     throw new Error('No app element found');
   }
 
-  app.appendChild(Canvas());
+  app.appendChild(Scene());
 }
 
 main();
