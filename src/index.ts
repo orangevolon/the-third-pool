@@ -1,11 +1,13 @@
+import { Canvas } from './Canvas';
+
 function main() {
-  const app = document.getElementById("app");
+  const app = document.getElementById('app');
 
   if (!app) {
-    throw new Error("No app element found");
+    throw new Error('No app element found');
   }
 
-  app.innerHTML = "Jump in the third pool!";
+  app.appendChild(Canvas());
 }
 
 main();
