@@ -6,20 +6,45 @@ import { resetScene } from '../utils/resetScene';
 import { initProgram } from '../utils/initProgram';
 import { Component } from './types';
 
-const TEST_POSITIONS = [
-  // point 1
-  0, 0,
-  // point 2
-  0, 0.5,
-  // point 3
-  0.5, 0,
-];
+interface Props {
+  width: number;
+  height: number;
+}
 
-export function Scene(): Component {
+export function Scene({ width, height }: Props): Component {
   const canvas = Canvas({
-    width: 600,
-    height: 400,
+    width,
+    height,
   });
+
+  const createVertexIds = (
+    gl: WebGL2RenderingContext,
+    shaderProgram: WebGLProgram
+  ) => {
+    const vertexIds = new Float32Array(width * height);
+
+    for (let vertexIndex = 0; vertexIndex < vertexIds.length; vertexIndex++) {
+      vertexIds[vertexIndex] = vertexIndex;
+    }
+
+    const vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertexIds, gl.STATIC_DRAW);
+
+    const aVertexId = gl.getAttribLocation(shaderProgram, 'aVertexId');
+    gl.vertexAttribPointer(aVertexId, 1, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aVertexId);
+
+    return vertexIds;
+  };
+
+  const setUniforms = (
+    gl: WebGL2RenderingContext,
+    shaderProgram: WebGLProgram
+  ) => {
+    const resolution = gl.getUniformLocation(shaderProgram, 'resolution');
+    gl.uniform2f(resolution, width, height);
+  };
 
   const onMount = () => {
     const gl = canvas.getContext('webgl2');
@@ -30,28 +55,10 @@ export function Scene(): Component {
 
     const program = initProgram(gl, vsSource, fsSource);
     resetScene(gl);
+    setUniforms(gl, program);
 
-    const indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(
-      gl.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array([0, 1, 2]),
-      gl.STATIC_DRAW
-    );
-
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array(TEST_POSITIONS),
-      gl.STATIC_DRAW
-    );
-
-    const aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
-    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(aVertexPosition);
-
-    gl.drawElements(gl.POINTS, 3, gl.UNSIGNED_SHORT, 0);
+    const vertices = createVertexIds(gl, program);
+    gl.drawArrays(gl.POINTS, 0, vertices.length);
   };
 
   return {
