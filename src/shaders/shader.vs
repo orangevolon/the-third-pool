@@ -1,9 +1,9 @@
 attribute vec4 aVertexPosition;
-attribute vec4 aVertexColor;
 
 varying highp vec4 vColor;
 
 void main() {
     gl_Position = aVertexPosition;
-    vColor = aVertexColor;
+    gl_PointSize = 10.0;
+    vColor = vec4(1.0, 1.0, 1.0, 1.0);
 }
