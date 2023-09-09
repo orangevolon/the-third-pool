@@ -1,14 +1,12 @@
-declare module '*.glsl' {
-  const value: string;
-  export default value;
-}
+declare type VertexShader = string;
+declare type FragmentShader = string;
 
 declare module '*.vs' {
-  const value: string;
+  const value: VertexShader;
   export default value;
 }
 
 declare module '*.fs' {
-  const value: string;
+  const value: FragmentShader;
   export default value;
 }

@@ -7,7 +7,10 @@ function main() {
     throw new Error('No app element found');
   }
 
-  app.appendChild(Scene());
+  const scene = Scene();
+  app.appendChild(scene.element);
+
+  scene.onMount();
 }
 
 main();

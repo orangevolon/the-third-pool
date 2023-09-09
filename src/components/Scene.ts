@@ -1,39 +1,35 @@
 import vsSource from '../shaders/shader.vs';
 import fsSource from '../shaders/shader.fs';
 
-import { loadShader } from '../utils/loadShader';
 import { Canvas } from './Canvas';
+import { resetScene } from '../utils/resetScene';
+import { initProgram } from '../utils/initProgram';
+import { Component } from './types';
 
-export function Scene() {
-  const canvas = Canvas();
-  const gl = canvas.getContext('webgl2');
+export function Scene(): Component {
+  const canvas = Canvas({
+    width: 600,
+    height: 400,
+  });
 
-  if (!gl) {
-    throw new Error('WebGL not supported');
-  }
+  const onMount = () => {
+    const gl = canvas.getContext('webgl2');
 
-  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-  const shaderProgram = gl.createProgram();
+    if (!gl) {
+      throw new Error('WebGL not supported');
+    }
 
-  if (!shaderProgram) {
-    throw new Error('Unable to create shader program');
-  }
+    initProgram(gl, vsSource, fsSource);
+    resetScene(gl);
 
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    throw new Error(
-      `Unable to initialize the shader program: ${gl.getProgramInfoLog(
-        shaderProgram
-      )}`
-    );
-  }
+    gl.drawElements(gl.TRIANGLES, 0, gl.UNSIGNED_SHORT, 0);
+  };
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-
-  return canvas;
+  return {
+    element: canvas,
+    onMount,
+  };
 }

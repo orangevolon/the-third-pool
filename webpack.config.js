@@ -21,12 +21,12 @@ module.exports = {
         },
       },
       {
-        test: /\.(glsl|vs|fs)$/,
+        test: /\.(vs|fs)$/,
         loader: 'ts-shader-loader',
       },
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js', '.glsl', '.vs', '.fs'],
+    extensions: ['.ts', '.js', '.vs', '.fs'],
   },
 };
