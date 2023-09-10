@@ -1,16 +1,13 @@
-import { Scene } from './components/Scene';
+import './index.css';
+import { Root } from './components/Root';
 
-function main() {
-  const app = document.getElementById('app');
+const app = document.getElementById('app');
 
-  if (!app) {
-    throw new Error('No app element found');
-  }
-
-  const scene = Scene();
-  app.appendChild(scene.element);
-
-  scene.onMount();
+if (!app) {
+  throw new Error('No app element found');
 }
 
-main();
+const root = new Root();
+app.appendChild(root.mount());
+
+root.render();

@@ -1,35 +1,97 @@
 import vsSource from '../shaders/shader.vs';
 import fsSource from '../shaders/shader.fs';
 
-import { Canvas } from './Canvas';
-import { resetScene } from '../utils/resetScene';
 import { initProgram } from '../utils/initProgram';
-import { Component } from './types';
+import { Component } from './Component';
+import { resetScene } from '../utils/resetScene';
+import { Canvas } from './Canvas';
 
-export function Scene(): Component {
-  const canvas = Canvas({
-    width: 600,
-    height: 400,
-  });
+interface Props {
+  width: number;
+  height: number;
+}
 
-  const onMount = () => {
-    const gl = canvas.getContext('webgl2');
+export class Scene extends Component<Props> {
+  canvas: HTMLCanvasElement | undefined;
+  program: WebGLProgram | undefined;
+  vertexBuffer: WebGLBuffer | undefined;
 
-    if (!gl) {
-      throw new Error('WebGL not supported');
+  get gl(): WebGL2RenderingContext {
+    if (!this.canvas) throw new Error('Canvas not initialized');
+    const webglContext = this.canvas.getContext('webgl2');
+    if (!webglContext) throw new Error('WebGL not supported');
+    return webglContext;
+  }
+
+  private prepareScene() {
+    const buffer = this.gl.createBuffer();
+    if (!buffer) throw new Error('Failed to create buffer');
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+    this.vertexBuffer = buffer;
+
+    this.program = initProgram(this.gl, vsSource, fsSource);
+
+    resetScene(this.gl);
+  }
+
+  private createVertices() {
+    const vertexIds = new Float32Array(this.props.width * this.props.height);
+
+    for (let vertexIndex = 0; vertexIndex < vertexIds.length; vertexIndex++) {
+      vertexIds[vertexIndex] = vertexIndex;
     }
 
-    initProgram(gl, vsSource, fsSource);
-    resetScene(gl);
+    return vertexIds;
+  }
 
-    const indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  private setVertices(vertices: Float32Array) {
+    if (!this.program) throw new Error('Program not initialized');
 
-    gl.drawElements(gl.TRIANGLES, 0, gl.UNSIGNED_SHORT, 0);
-  };
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+    const aVertexId = this.gl.getAttribLocation(this.program, 'aVertexId');
 
-  return {
-    element: canvas,
-    onMount,
-  };
+    this.gl.vertexAttribPointer(aVertexId, 1, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(aVertexId);
+  }
+
+  private setResolution(width: number, height: number) {
+    if (!this.program) throw new Error('Program not initialized');
+    const resolution = this.gl.getUniformLocation(this.program, 'resolution');
+    this.gl.uniform2f(resolution, width, height);
+  }
+
+  mount() {
+    this.canvas = new Canvas({
+      width: this.props.width,
+      height: this.props.height,
+      id: 'scene',
+    }).mount();
+
+    this.prepareScene();
+
+    return this.canvas;
+  }
+
+  unmount() {
+    if (this.vertexBuffer) {
+      this.gl.deleteBuffer(this.vertexBuffer);
+    }
+
+    if (this.program) {
+      this.gl.deleteProgram(this.program);
+    }
+  }
+
+  render() {
+    if (!this.canvas) throw new Error('Canvas not initialized');
+    const { width, height } = this.props;
+
+    const vertices = this.createVertices();
+    this.setVertices(vertices);
+    this.setResolution(width, height);
+
+    requestAnimationFrame(() => {
+      this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);
+    });
+  }
 }

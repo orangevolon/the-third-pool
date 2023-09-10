@@ -26,4 +26,6 @@ export function initProgram(
   }
 
   gl.useProgram(shaderProgram);
+
+  return shaderProgram;
 }
