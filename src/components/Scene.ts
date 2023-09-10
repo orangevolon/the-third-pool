@@ -11,16 +11,16 @@ interface Props {
   height: number;
 }
 
-export function Scene({ width, height }: Props): Component {
+export function Scene({ width, height }: Props): Component<Props> {
   const canvas = Canvas({
     width,
     height,
   });
 
-  const createVertexIds = (
-    gl: WebGL2RenderingContext,
-    shaderProgram: WebGLProgram
-  ) => {
+  let gl: WebGL2RenderingContext;
+  let program: WebGLProgram;
+
+  const createVertexIds = () => {
     const vertexIds = new Float32Array(width * height);
 
     for (let vertexIndex = 0; vertexIndex < vertexIds.length; vertexIndex++) {
@@ -31,38 +31,44 @@ export function Scene({ width, height }: Props): Component {
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertexIds, gl.STATIC_DRAW);
 
-    const aVertexId = gl.getAttribLocation(shaderProgram, 'aVertexId');
+    const aVertexId = gl.getAttribLocation(program, 'aVertexId');
     gl.vertexAttribPointer(aVertexId, 1, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(aVertexId);
 
     return vertexIds;
   };
 
-  const setUniforms = (
-    gl: WebGL2RenderingContext,
-    shaderProgram: WebGLProgram
-  ) => {
-    const resolution = gl.getUniformLocation(shaderProgram, 'resolution');
+  const setResolution = (width: number, height: number) => {
+    const resolution = gl.getUniformLocation(program, 'resolution');
     gl.uniform2f(resolution, width, height);
   };
 
   const onMount = () => {
-    const gl = canvas.getContext('webgl2');
+    const webglContext = canvas.getContext('webgl2');
 
-    if (!gl) {
+    if (!webglContext) {
       throw new Error('WebGL not supported');
     }
 
-    const program = initProgram(gl, vsSource, fsSource);
-    resetScene(gl);
-    setUniforms(gl, program);
+    gl = webglContext;
 
-    const vertices = createVertexIds(gl, program);
+    program = initProgram(gl, vsSource, fsSource);
+    resetScene(gl);
+    setResolution(width, height);
+
+    const vertices = createVertexIds();
     gl.drawArrays(gl.POINTS, 0, vertices.length);
+  };
+
+  const onUpdate = ({ width, height }: Props) => {
+    setResolution(width, height);
+    canvas.width = width;
+    canvas.height = height;
   };
 
   return {
     element: canvas,
     onMount,
+    onUpdate,
   };
 }
