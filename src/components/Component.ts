@@ -8,8 +8,12 @@ export abstract class Component<
 
   protected props: TProps;
 
-  update(props: TProps) {
-    this.props = props;
+  update(updatedProps: Partial<TProps>) {
+    this.props = {
+      ...this.props,
+      ...updatedProps,
+    };
+
     this.render();
   }
 
