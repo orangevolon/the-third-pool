@@ -1,4 +1,5 @@
 import { Scene } from './components/Scene';
+import './index.css'
 
 function main() {
   const app = document.getElementById('app');
