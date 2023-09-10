@@ -7,7 +7,7 @@ if (!app) {
   throw new Error('No app element found');
 }
 
-const root = Root();
-app.appendChild(root.element);
+const root = new Root();
+app.appendChild(root.mount());
 
-root.onMount?.();
+root.render();

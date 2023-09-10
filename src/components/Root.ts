@@ -1,27 +1,30 @@
+import { Component } from './Component';
 import { Scene } from './Scene';
-import { Component } from './types';
 
-export function Root(): Component {
-  const canvasSize = Math.max(window.innerWidth, window.innerHeight);
+export class Root extends Component {
+  container: HTMLElement | undefined;
+  scene: Scene | undefined;
 
-  const scene = Scene({
-    width: canvasSize,
-    height: canvasSize,
-  });
+  override mount() {
+    this.container = document.createElement('div');
+    this.container.setAttribute('id', 'container');
 
-  const container = document.createElement('div');
-  container.setAttribute('id', 'container');
-  scene.element.setAttribute('id', 'scene');
+    const canvasSize = Math.max(window.innerWidth, window.innerHeight);
+    this.scene = new Scene({
+      width: canvasSize,
+      height: canvasSize,
+    });
 
-  const onMount = () => {
-    container.appendChild(scene.element);
-    scene.onMount?.();
-  };
+    this.container.appendChild(this.scene.mount());
 
-  const onUnmount = () => {
-    container.removeChild(scene.element);
-    scene.onUnmount?.();
-  };
+    return this.container;
+  }
 
-  return { element: container, onMount, onUnmount };
+  override unmount() {
+    this.scene?.unmount();
+  }
+
+  override render() {
+    this.scene?.render();
+  }
 }
