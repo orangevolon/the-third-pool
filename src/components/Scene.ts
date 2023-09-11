@@ -9,6 +9,7 @@ import { Canvas } from './Canvas';
 interface Props {
   width: number;
   height: number;
+  time: number;
 }
 
 export class Scene extends Component<Props> {
@@ -60,7 +61,13 @@ export class Scene extends Component<Props> {
     this.gl.uniform2f(resolution, width, height);
   }
 
-  mount() {
+  private setTime(time: number) {
+    if (!this.program) throw new Error('Program not initialized');
+    const uTime = this.gl.getUniformLocation(this.program, 'time');
+    this.gl.uniform1f(uTime, time);
+  }
+
+  override mount() {
     this.canvas = new Canvas({
       width: this.props.width,
       height: this.props.height,
@@ -72,7 +79,7 @@ export class Scene extends Component<Props> {
     return this.canvas;
   }
 
-  unmount() {
+  override unmount() {
     if (this.vertexBuffer) {
       this.gl.deleteBuffer(this.vertexBuffer);
     }
@@ -82,13 +89,14 @@ export class Scene extends Component<Props> {
     }
   }
 
-  render() {
+  override render() {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    const { width, height } = this.props;
+    const { width, height, time } = this.props;
 
     const vertices = this.createVertices();
     this.setVertices(vertices);
     this.setResolution(width, height);
+    this.setTime(time);
 
     requestAnimationFrame(() => {
       this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);
