@@ -4,22 +4,42 @@ uniform float time;
 
 varying highp vec4 vColor;
 
+void paint(out vec4 vColor, vec2 point, float time_ms) {
+  float timeS = time_ms / 1000.0;
+  float timeCoeff = timeS / 10.0;
+  float freqCoeff = 100.0;
+
+  // Rotate the pattern
+  float rotationAngleRad = radians(timeCoeff * 10.0);
+  mat2 rotationMatrix = mat2(
+    cos(rotationAngleRad),
+    -sin(rotationAngleRad),
+    sin(rotationAngleRad),
+    cos(rotationAngleRad)
+  );
+  point = vec2(
+    point.x,
+    point.y + 0.1 * sin(point.x * (freqCoeff / 20.0) * sin(timeCoeff))
+  );
+  point = rotationMatrix * point;
+
+  // Create stripes
+  float intensity =
+    sin(freqCoeff * (6.0 * timeCoeff / 10.0 + point.y / 2.0)) * 0.5 + 0.5;
+
+  float cutoffValue = 0.9;
+  intensity = smoothstep(cutoffValue, cutoffValue - 0.02, intensity);
+
+  vColor = vec4(intensity, intensity, intensity, 1.0);
+}
+
 void main() {
-    float u = mod(aVertexId, resolution.x);
-    float v = floor(aVertexId / resolution.x);
+  float u = mod(aVertexId, resolution.x);
+  float v = floor(aVertexId / resolution.x);
+  vec2 point = 2.0 * vec2(u, v) / resolution - 1.0;
 
-    vec2 point = 2.0 * vec2(u, v) / resolution - 1.0;
+  gl_Position = vec4(point.xy, 0, 1);
+  gl_PointSize = 5.0;
 
-    gl_Position = vec4(point.xy, 0, 1);
-    gl_PointSize = 5.0;
-
-    float dist = distance(vec2(0, 0), point);
-
-    float red = cos(20.0 * (time / 6000.00 + dist));
-    float green = cos(10.0 * (time / 8000.00 + dist + 2.0));
-    float blue = cos(10.0 * (time / 10000.00 + dist + 4.0));
-
-    vec3 color = vec3(red, green, blue) / 2.0 + 0.5;
-
-    vColor = vec4(color, 1.0);
+  paint(vColor, point, time);
 }
