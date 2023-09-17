@@ -13,6 +13,10 @@ export class Timer {
     return this.timer !== undefined;
   }
 
+  get currentTime() {
+    return this.time;
+  }
+
   start() {
     this.timer = window.setInterval(() => {
       this.time += this.interval;

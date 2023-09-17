@@ -7,14 +7,17 @@ import { resetScene } from '../utils/resetScene';
 import { Canvas } from './Canvas';
 import { mapToConfiningRect } from '../utils/mapToRect';
 
+interface TouchEvent {
+  x: number;
+  y: number;
+  time: number;
+}
+
 interface Props {
   width: number;
   height: number;
   time: number;
-  mousePosition?: {
-    x: number;
-    y: number;
-  };
+  touchEvent?: TouchEvent;
 }
 
 export class Scene extends Component<Props> {
@@ -72,28 +75,29 @@ export class Scene extends Component<Props> {
     this.gl.uniform1f(uTime, time);
   }
 
-  private setMousePosition(mousePosition: { x: number; y: number }) {
+  private setTouchEvent(touchEvent: TouchEvent) {
     if (!this.program) throw new Error('Program not initialized');
     if (!this.canvas) throw new Error('Canvas not initialized');
 
     const uMousePosition = this.gl.getUniformLocation(
       this.program,
-      'touchPoint'
+      'touchEvent'
     );
 
     const canvasSize = this.canvas.getBoundingClientRect();
     const renderSize = { width: this.props.width, height: this.props.height };
 
     const mappedMousePosition = mapToConfiningRect(
-      mousePosition,
+      touchEvent,
       canvasSize,
       renderSize
     );
 
-    this.gl.uniform2f(
+    this.gl.uniform3f(
       uMousePosition,
       mappedMousePosition.x,
-      mappedMousePosition.y
+      mappedMousePosition.y,
+      touchEvent.time,
     );
   }
 
@@ -121,15 +125,15 @@ export class Scene extends Component<Props> {
 
   override render() {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    const { width, height, time, mousePosition } = this.props;
+    const { width, height, time, touchEvent } = this.props;
 
     const vertices = this.createVertices();
     this.setVertices(vertices);
     this.setResolution(width, height);
     this.setTime(time);
 
-    if (mousePosition) {
-      this.setMousePosition(mousePosition);
+    if (touchEvent) {
+      this.setTouchEvent(touchEvent);
     }
 
     requestAnimationFrame(() => {
