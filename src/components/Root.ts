@@ -11,9 +11,16 @@ export class Root extends Component {
     super();
   }
 
+  private updateMousePosition = (event: MouseEvent) => {
+    this.scene?.update({
+      mousePosition: { x: event.clientX, y: event.clientY },
+    });
+  };
+
   override mount() {
     this.container = document.createElement('div');
     this.container.setAttribute('id', 'container');
+    this.container.addEventListener('mousemove', this.updateMousePosition);
 
     this.timer = new Timer(1_000 / 60);
     this.timer.onTick((time) => {
@@ -33,8 +40,10 @@ export class Root extends Component {
   }
 
   override unmount() {
-    this.scene?.unmount();
+    this.container?.removeEventListener('mousemove', this.updateMousePosition);
     this.timer?.stop();
+
+    this.scene?.unmount();
   }
 
   override render() {

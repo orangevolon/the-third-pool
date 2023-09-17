@@ -5,11 +5,16 @@ import { initProgram } from '../utils/initProgram';
 import { Component } from './Component';
 import { resetScene } from '../utils/resetScene';
 import { Canvas } from './Canvas';
+import { mapToConfiningRect } from '../utils/mapToRect';
 
 interface Props {
   width: number;
   height: number;
   time: number;
+  mousePosition?: {
+    x: number;
+    y: number;
+  };
 }
 
 export class Scene extends Component<Props> {
@@ -67,6 +72,31 @@ export class Scene extends Component<Props> {
     this.gl.uniform1f(uTime, time);
   }
 
+  private setMousePosition(mousePosition: { x: number; y: number }) {
+    if (!this.program) throw new Error('Program not initialized');
+    if (!this.canvas) throw new Error('Canvas not initialized');
+
+    const uMousePosition = this.gl.getUniformLocation(
+      this.program,
+      'touchPoint'
+    );
+
+    const canvasSize = this.canvas.getBoundingClientRect();
+    const renderSize = { width: this.props.width, height: this.props.height };
+
+    const mappedMousePosition = mapToConfiningRect(
+      mousePosition,
+      canvasSize,
+      renderSize
+    );
+
+    this.gl.uniform2f(
+      uMousePosition,
+      mappedMousePosition.x,
+      mappedMousePosition.y
+    );
+  }
+
   override mount() {
     this.canvas = new Canvas({
       width: this.props.width,
@@ -91,12 +121,16 @@ export class Scene extends Component<Props> {
 
   override render() {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    const { width, height, time } = this.props;
+    const { width, height, time, mousePosition } = this.props;
 
     const vertices = this.createVertices();
     this.setVertices(vertices);
     this.setResolution(width, height);
     this.setTime(time);
+
+    if (mousePosition) {
+      this.setMousePosition(mousePosition);
+    }
 
     requestAnimationFrame(() => {
       this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);
