@@ -6,24 +6,28 @@ import { Component } from './Component';
 import { resetScene } from '../utils/resetScene';
 import { Canvas } from './Canvas';
 import { mapToConfiningRect } from '../utils/mapToRect';
-
-interface TouchEvent {
-  x: number;
-  y: number;
-  time: number;
-}
+import { SurfaceTouchEvent } from './types';
+import { TouchEventsList } from './TouchPoints';
 
 interface Props {
   width: number;
   height: number;
   time: number;
-  touchEvent?: TouchEvent;
+  touchEvent?: SurfaceTouchEvent;
 }
 
+const MAX_TOUCH_EVENTS = 100;
+
 export class Scene extends Component<Props> {
+  constructor(props: Props) {
+    super(props);
+    this.touchEvents = new TouchEventsList(MAX_TOUCH_EVENTS);
+  }
+
   canvas: HTMLCanvasElement | undefined;
   program: WebGLProgram | undefined;
   vertexBuffer: WebGLBuffer | undefined;
+  touchEvents: TouchEventsList;
 
   get gl(): WebGL2RenderingContext {
     if (!this.canvas) throw new Error('Canvas not initialized');
@@ -75,14 +79,17 @@ export class Scene extends Component<Props> {
     this.gl.uniform1f(uTime, time);
   }
 
-  private setTouchEvent(touchEvent: TouchEvent) {
+  private setTouchEvents() {
     if (!this.program) throw new Error('Program not initialized');
-    if (!this.canvas) throw new Error('Canvas not initialized');
-
     const uMousePosition = this.gl.getUniformLocation(
       this.program,
       'touchEvent'
     );
+    this.gl.uniform3fv(uMousePosition, this.touchEvents.getData());
+  }
+
+  public addTouchEvent(touchEvent: SurfaceTouchEvent) {
+    if (!this.canvas) throw new Error('Canvas not initialized');
 
     const canvasSize = this.canvas.getBoundingClientRect();
     const renderSize = { width: this.props.width, height: this.props.height };
@@ -93,13 +100,9 @@ export class Scene extends Component<Props> {
       renderSize
     );
 
-    this.gl.uniform3f(
-      uMousePosition,
-      mappedMousePosition.x,
-      mappedMousePosition.y,
-      touchEvent.time,
-    );
+    this.touchEvents.add({ ...touchEvent, ...mappedMousePosition });
   }
+
 
   override mount() {
     this.canvas = new Canvas({
@@ -109,6 +112,7 @@ export class Scene extends Component<Props> {
     }).mount();
 
     this.prepareScene();
+    this.setTouchEvents();
 
     return this.canvas;
   }
@@ -125,16 +129,13 @@ export class Scene extends Component<Props> {
 
   override render() {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    const { width, height, time, touchEvent } = this.props;
+    const { width, height, time } = this.props;
 
     const vertices = this.createVertices();
     this.setVertices(vertices);
     this.setResolution(width, height);
     this.setTime(time);
-
-    if (touchEvent) {
-      this.setTouchEvent(touchEvent);
-    }
+    this.setTouchEvents();
 
     requestAnimationFrame(() => {
       this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);

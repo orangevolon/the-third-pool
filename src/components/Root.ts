@@ -13,14 +13,13 @@ export class Root extends Component {
 
   private updateMousePosition = (event: MouseEvent) => {
     if (!this.timer) throw new Error('Timer not initialized');
+    if (!this.scene) throw new Error('Scene not initialized');
 
-    this.scene?.update({
-      touchEvent: {
-        x: event.clientX,
-        y: event.clientY,
-        time: this.timer?.currentTime,
-      },
-    });
+    this.scene.addTouchEvent({
+      x: event.clientX,
+      y: event.clientY,
+      time: this.timer.currentTime,
+    })
   };
 
   override mount() {

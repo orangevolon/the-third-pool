@@ -1,8 +1,10 @@
+const int TOUCH_EVENT_SIZE = 100;
+
 attribute float aVertexId;
 
 uniform vec2 resolution;
 uniform float time;
-uniform vec3 touchEvent;
+uniform vec3 touchEvent[TOUCH_EVENT_SIZE];
 
 varying highp vec4 vColor;
 
@@ -16,29 +18,44 @@ float asymmetricGaussian(float x, float sigma, float mu, float bias) {
   return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
 }
 
-void paint(out vec4 vColor, vec2 point, float time_ms, vec3 touchEvent) {
+vec2 addTouchPoint(vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE]) {
+  // Touch settings
+  float touchDropoffMs = 500.0;
+  float touchRadius = 10.0;
+
+  vec2 pointShift = vec2(0.0, 0.0);
+
+  for(int index = 0; index < TOUCH_EVENT_SIZE; ++index) {
+    vec2 touchPoint = mapToClipSpace(touchEvent[index].xy, resolution);
+    float touchTimeMs = touchEvent[index].z;
+
+    // Create pinch point bubble
+    float distanceToTouchEvent = distance(point, touchPoint);
+
+    vec2 dirToTouch =
+      sin(distanceToTouchEvent * 100.0) /
+      (distanceToTouchEvent * 1000.0) *
+      normalize(touchPoint - point);
+
+    float dirToTouchEvent = asymmetricGaussian(
+      time_ms - touchTimeMs,
+      touchDropoffMs / 3.0,
+      touchDropoffMs,
+      0.1
+    );
+
+    pointShift += dirToTouch * dirToTouchEvent * touchRadius;
+  }
+
+  return pointShift;
+}
+
+void paint(out vec4 vColor, vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE]) {
   float timeS = time_ms / 1000.0;
   float timeCoeff = timeS / 10.0;
   float freqCoeff = 100.0;
 
-  // Touch settings
-  float touchDropoffMs = 500.0;
-  float touchRadius = 5.0;
-
-  // Create pinch point bubble
-  float distanceToTouchEvent = distance(point, touchEvent.xy);
-  vec2 dirToTouch =
-    sin(distanceToTouchEvent * 100.0) /
-    (distanceToTouchEvent * 1000.0) *
-    normalize(touchEvent.xy - point);
-  float dirToTouchEvent = asymmetricGaussian(
-    time_ms - touchEvent.z,
-    touchDropoffMs / 3.0,
-    touchDropoffMs,
-    0.1
-  );
-
-  point = point + dirToTouch * dirToTouchEvent * touchRadius;
+  point += addTouchPoint(point, time_ms, touchEvent);
 
   // Rotate the pattern
   float rotationAngleRad = radians(timeCoeff * 10.0);
@@ -70,8 +87,6 @@ void main() {
   float u = mod(aVertexId, resolution.x);
   float v = floor(aVertexId / resolution.x);
   vec2 point = mapToClipSpace(vec2(u, v), resolution);
-  vec2 touchPoint = mapToClipSpace(touchEvent.xy, resolution);
-  vec3 touchEvent = vec3(touchPoint.xy, touchEvent.z);
 
   gl_Position = vec4(point.xy, 0, 1);
   gl_PointSize = 5.0;
