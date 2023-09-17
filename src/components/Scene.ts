@@ -5,17 +5,29 @@ import { initProgram } from '../utils/initProgram';
 import { Component } from './Component';
 import { resetScene } from '../utils/resetScene';
 import { Canvas } from './Canvas';
+import { mapToConfiningRect } from '../utils/mapToRect';
+import { SurfaceTouchEvent } from './types';
+import { TouchEventsList } from './TouchPoints';
 
 interface Props {
   width: number;
   height: number;
   time: number;
+  touchEvent?: SurfaceTouchEvent;
 }
 
+const MAX_TOUCH_EVENTS = 100;
+
 export class Scene extends Component<Props> {
+  constructor(props: Props) {
+    super(props);
+    this.touchEvents = new TouchEventsList(MAX_TOUCH_EVENTS);
+  }
+
   canvas: HTMLCanvasElement | undefined;
   program: WebGLProgram | undefined;
   vertexBuffer: WebGLBuffer | undefined;
+  touchEvents: TouchEventsList;
 
   get gl(): WebGL2RenderingContext {
     if (!this.canvas) throw new Error('Canvas not initialized');
@@ -67,6 +79,31 @@ export class Scene extends Component<Props> {
     this.gl.uniform1f(uTime, time);
   }
 
+  private setTouchEvents() {
+    if (!this.program) throw new Error('Program not initialized');
+    const uMousePosition = this.gl.getUniformLocation(
+      this.program,
+      'touchEvent'
+    );
+    this.gl.uniform3fv(uMousePosition, this.touchEvents.getData());
+  }
+
+  public addTouchEvent(touchEvent: SurfaceTouchEvent) {
+    if (!this.canvas) throw new Error('Canvas not initialized');
+
+    const canvasSize = this.canvas.getBoundingClientRect();
+    const renderSize = { width: this.props.width, height: this.props.height };
+
+    const mappedMousePosition = mapToConfiningRect(
+      touchEvent,
+      canvasSize,
+      renderSize
+    );
+
+    this.touchEvents.add({ ...touchEvent, ...mappedMousePosition });
+  }
+
+
   override mount() {
     this.canvas = new Canvas({
       width: this.props.width,
@@ -75,6 +112,7 @@ export class Scene extends Component<Props> {
     }).mount();
 
     this.prepareScene();
+    this.setTouchEvents();
 
     return this.canvas;
   }
@@ -97,6 +135,7 @@ export class Scene extends Component<Props> {
     this.setVertices(vertices);
     this.setResolution(width, height);
     this.setTime(time);
+    this.setTouchEvents();
 
     requestAnimationFrame(() => {
       this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);

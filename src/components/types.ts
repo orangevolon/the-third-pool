@@ -4,3 +4,9 @@ export interface Component<TProps = void> {
   onUnmount?: () => void;
   onUpdate?: (newProps: TProps) => void;
 }
+
+export interface SurfaceTouchEvent {
+  x: number;
+  y: number;
+  time: number;
+}
