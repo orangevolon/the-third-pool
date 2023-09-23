@@ -24,7 +24,8 @@ vec2 mapToClipSpace(vec2 point, vec2 resolution) {
 
 float asymmetricGaussian(float x, float sigma, float mu, float bias) {
   x = x - mu; // Shift the function along the x-axis
-  if (x > 0.0) x *= bias;
+  if(x > 0.0)
+    x *= bias;
   return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
 }
 
@@ -42,17 +43,11 @@ vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] 
     // Create pinch point bubble
     float distanceToTouchPoint = distance(point, touchPoint);
 
-    vec2 dirToTouch =
-      sin(distanceToTouchPoint * 100.0) /
+    vec2 dirToTouch = sin(distanceToTouchPoint * 100.0) /
       (distanceToTouchPoint * 1000.0) *
       normalize(touchPoint - point);
 
-    float dirToTouchEvent = asymmetricGaussian(
-      state.timeMs - touchTimeMs,
-      touchDropoffMs / 3.0,
-      touchDropoffMs,
-      0.1
-    );
+    float dirToTouchEvent = asymmetricGaussian(state.timeMs - touchTimeMs, touchDropoffMs / 3.0, touchDropoffMs, 0.1);
 
     pointShift += dirToTouch * dirToTouchEvent * touchRadius;
   }
@@ -60,19 +55,31 @@ vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] 
   return point += pointShift;
 }
 
+vec2 moveField(vec2 point, ShaderState state) {
+  vec2 progressShift = vec2(0.0, state.progress);
+  progressShift += vec2(resolution.x / 2.0, resolution.y / 2.0);
+  progressShift = mapToClipSpace(progressShift, resolution);
+
+  return point + progressShift;
+}
+
+vec2 addSecondWave(vec2 point, ShaderState state) {
+  float freqCoeff = 10.0;
+  float magnitude = 0.05;
+
+  vec2 pointShift = vec2(
+    0,
+    sin(freqCoeff * point.x)
+  ) * magnitude;
+
+  return point + pointShift;
+}
+
 void paintField(out vec4 color, vec2 point, ShaderState state) {
-  float progress = state.progress;
   float freqCoeff = 100.0;
 
-  // Add one more dimension to the pattern
-  point = vec2(
-    point.x,
-    point.y + 0.1 * sin(point.x * (freqCoeff / 20.0) * sin(progress))
-  );
-
   // Create stripes
-  float intensity =
-    sin(freqCoeff * (6.0 * progress / 10.0 + point.y / 2.0)) * 0.5 + 0.5;
+  float intensity = sin(freqCoeff * (10.0 + point.y / 2.0)) * 0.5 + 0.5;
 
   float cutoffValue = 0.1;
   intensity = smoothstep(cutoffValue, cutoffValue - 0.02, intensity) * 0.8;
@@ -88,6 +95,8 @@ void main() {
   gl_Position = vec4(point.xy, 0, 1);
   gl_PointSize = 5.0;
 
+  point = moveField(point, state);
   point = addTouchPoints(point, state, touchEvents);
+  point = addSecondWave(point, state);
   paintField(vColor, point, state);
 }

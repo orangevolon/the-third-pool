@@ -137,7 +137,8 @@ export class Scene extends Component<Props> {
     );
 
     this.touchEvents.add({
-      ...mappedMousePosition,
+      x: mappedMousePosition.x,
+      y: mappedMousePosition.y + this.props.progress,
       timeMs: Date.now() - this.startTime,
     });
 

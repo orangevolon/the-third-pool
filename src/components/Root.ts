@@ -28,7 +28,7 @@ export class Root extends Component {
 
     this.timer = new Timer(1_000 / 60);
     this.timer.onTick((time) => {
-      this.scene?.update({ progress: time / 50_000 });
+      this.scene?.update({ progress: time / 20 });
     });
     this.timer.start();
 
