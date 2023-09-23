@@ -28,13 +28,13 @@ export class Root extends Component {
 
     this.timer = new Timer(1_000 / 60);
     this.timer.onTick((time) => {
-      this.scene?.update({ progress: time / 20 });
+      this.scene?.update({ offsetY: time / 20 });
     });
     this.timer.start();
 
     const canvasSize = Math.max(window.innerWidth, window.innerHeight);
     this.scene = new Scene({
-      progress: 0,
+      offsetY: 0,
       resolution: {
         width: canvasSize,
         height: canvasSize,

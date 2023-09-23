@@ -11,11 +11,11 @@ import { Point, Rect, TouchEvent } from './types';
 
 interface Props {
   resolution: Rect;
-  progress: number;
+  offsetY: number;
 }
 
 interface ShaderState {
-  progress: number;
+  offsetY: number;
   timeMs: number;
 }
 
@@ -89,15 +89,12 @@ export class Scene extends Component<Props> {
   private updateState(state: ShaderState) {
     if (!this.program) throw new Error('Program not initialized');
 
-    const { progress, timeMs } = state;
+    const { offsetY, timeMs } = state;
     const uTimeMs = this.gl.getUniformLocation(this.program, 'state.timeMs');
     this.gl.uniform1f(uTimeMs, timeMs);
 
-    const uProgress = this.gl.getUniformLocation(
-      this.program,
-      'state.progress'
-    );
-    this.gl.uniform1f(uProgress, progress);
+    const uOffsetY = this.gl.getUniformLocation(this.program, 'state.offsetY');
+    this.gl.uniform1f(uOffsetY, offsetY);
   }
 
   private updateTouchEvents(touchEvents: TouchEventsList, latest = false) {
@@ -138,7 +135,7 @@ export class Scene extends Component<Props> {
 
     this.touchEvents.add({
       x: mappedMousePosition.x,
-      y: mappedMousePosition.y + this.props.progress,
+      y: mappedMousePosition.y + this.props.offsetY,
       timeMs: Date.now() - this.startTime,
     });
 
@@ -176,7 +173,7 @@ export class Scene extends Component<Props> {
     // Update shader state
     const timeMs = Date.now() - this.startTime;
     this.updateState({
-      progress: this.props.progress,
+      offsetY: this.props.offsetY,
       timeMs,
     });
 

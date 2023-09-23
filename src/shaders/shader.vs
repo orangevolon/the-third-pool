@@ -8,7 +8,7 @@ struct TouchEvent {
 
 struct ShaderState {
   float timeMs;
-  float progress;
+  float offsetY;
 };
 
 uniform ShaderState state;
@@ -56,11 +56,11 @@ vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] 
 }
 
 vec2 moveField(vec2 point, ShaderState state) {
-  vec2 progressShift = vec2(0.0, state.progress);
-  progressShift += vec2(resolution.x / 2.0, resolution.y / 2.0);
-  progressShift = mapToClipSpace(progressShift, resolution);
+  vec2 offsetShift = vec2(0.0, state.offsetY);
+  offsetShift += vec2(resolution.x / 2.0, resolution.y / 2.0);
+  offsetShift = mapToClipSpace(offsetShift, resolution);
 
-  return point + progressShift;
+  return point + offsetShift;
 }
 
 vec2 addSecondWave(vec2 point, ShaderState state) {
