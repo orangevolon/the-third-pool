@@ -18,7 +18,7 @@ export class Root extends Component {
     this.scene.addTouchEvent({
       x: event.clientX,
       y: event.clientY,
-      time: this.timer.currentTime,
+      timeMs: this.timer.currentTime,
     })
   };
 
@@ -36,6 +36,7 @@ export class Root extends Component {
     this.scene = new Scene({
       width: canvasSize,
       height: canvasSize,
+      progress: 0,
       time: 0,
     });
 

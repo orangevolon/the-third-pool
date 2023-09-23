@@ -8,5 +8,5 @@ export interface Component<TProps = void> {
 export interface SurfaceTouchEvent {
   x: number;
   y: number;
-  time: number;
+  timeMs: number;
 }

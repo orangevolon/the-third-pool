@@ -1,12 +1,22 @@
+# version 300 es
 const int TOUCH_EVENT_SIZE = 100;
 
-attribute float aVertexId;
+struct TouchEvent {
+  vec2 point;
+  float timeMs;
+};
 
-uniform vec2 resolution;
-uniform float time;
-uniform vec3 touchEvent[TOUCH_EVENT_SIZE];
+struct State {
+  float timeMs;
+  vec2 resolution;
+};
 
-varying highp vec4 vColor;
+uniform State state;
+uniform TouchEvent[TOUCH_EVENT_SIZE] touchEvents;
+
+in float aVertexId;
+out highp vec4 vColor;
+
 
 vec2 mapToClipSpace(vec2 point, vec2 resolution) {
   return point / resolution * vec2(2.0, -2.0) - vec2(1.0, -1.0);
@@ -18,7 +28,7 @@ float asymmetricGaussian(float x, float sigma, float mu, float bias) {
   return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
 }
 
-vec2 addTouchPoint(vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE]) {
+vec2 addTouchPoint(vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
   // Touch settings
   float touchDropoffMs = 500.0;
   float touchRadius = 10.0;
@@ -26,8 +36,8 @@ vec2 addTouchPoint(vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE])
   vec2 pointShift = vec2(0.0, 0.0);
 
   for(int index = 0; index < TOUCH_EVENT_SIZE; ++index) {
-    vec2 touchPoint = mapToClipSpace(touchEvent[index].xy, resolution);
-    float touchTimeMs = touchEvent[index].z;
+    vec2 touchPoint = mapToClipSpace(touchEvents[index].point, state.resolution);
+    float touchTimeMs = touchEvents[index].timeMs;
 
     // Create pinch point bubble
     float distanceToTouchEvent = distance(point, touchPoint);
@@ -38,7 +48,7 @@ vec2 addTouchPoint(vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE])
       normalize(touchPoint - point);
 
     float dirToTouchEvent = asymmetricGaussian(
-      time_ms - touchTimeMs,
+      state.timeMs - touchTimeMs,
       touchDropoffMs / 3.0,
       touchDropoffMs,
       0.1
@@ -50,12 +60,12 @@ vec2 addTouchPoint(vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE])
   return pointShift;
 }
 
-void paint(out vec4 vColor, vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVENT_SIZE]) {
-  float timeS = time_ms / 1000.0;
+void paint(out vec4 vColor, vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
+  float timeS = state.timeMs / 1000.0;
   float timeCoeff = timeS / 10.0;
   float freqCoeff = 100.0;
 
-  point += addTouchPoint(point, time_ms, touchEvent);
+  point += addTouchPoint(point, state, touchEvents);
 
   // Rotate the pattern
   float rotationAngleRad = radians(timeCoeff * 10.0);
@@ -84,12 +94,12 @@ void paint(out vec4 vColor, vec2 point, float time_ms, vec3 touchEvent[TOUCH_EVE
 }
 
 void main() {
-  float u = mod(aVertexId, resolution.x);
-  float v = floor(aVertexId / resolution.x);
-  vec2 point = mapToClipSpace(vec2(u, v), resolution);
+  float u = mod(aVertexId, state.resolution.x);
+  float v = floor(aVertexId / state.resolution.x);
+  vec2 point = mapToClipSpace(vec2(u, v), state.resolution);
 
   gl_Position = vec4(point.xy, 0, 1);
   gl_PointSize = 5.0;
 
-  paint(vColor, point, time, touchEvent);
+  paint(vColor, point, state, touchEvents);
 }

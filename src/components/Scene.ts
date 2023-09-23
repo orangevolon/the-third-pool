@@ -13,7 +13,13 @@ interface Props {
   width: number;
   height: number;
   time: number;
+  progress: number;
   touchEvent?: SurfaceTouchEvent;
+}
+
+interface State {
+  resolution: { width: number; height: number };
+  timeMs: number;
 }
 
 const MAX_TOUCH_EVENTS = 100;
@@ -67,25 +73,41 @@ export class Scene extends Component<Props> {
     this.gl.enableVertexAttribArray(aVertexId);
   }
 
-  private setResolution(width: number, height: number) {
+  private setState(state: State) {
     if (!this.program) throw new Error('Program not initialized');
-    const resolution = this.gl.getUniformLocation(this.program, 'resolution');
-    this.gl.uniform2f(resolution, width, height);
-  }
 
-  private setTime(time: number) {
-    if (!this.program) throw new Error('Program not initialized');
-    const uTime = this.gl.getUniformLocation(this.program, 'time');
-    this.gl.uniform1f(uTime, time);
+    const uTimeMs = this.gl.getUniformLocation(this.program, 'state.timeMs');
+    this.gl.uniform1f(uTimeMs, state.timeMs);
+
+    const uResolution = this.gl.getUniformLocation(
+      this.program,
+      'state.resolution'
+    );
+    this.gl.uniform2f(
+      uResolution,
+      state.resolution.width,
+      state.resolution.height
+    );
   }
 
   private setTouchEvents() {
     if (!this.program) throw new Error('Program not initialized');
-    const uMousePosition = this.gl.getUniformLocation(
-      this.program,
-      'touchEvent'
-    );
-    this.gl.uniform3fv(uMousePosition, this.touchEvents.getData());
+
+    for (let index = 0; index < this.touchEvents.maxSize; index++) {
+      const event = this.touchEvents.events[index];
+
+      const uPoint = this.gl.getUniformLocation(
+        this.program,
+        `touchEvents[${index}].point`
+      );
+      this.gl.uniform2f(uPoint, event.x, event.y);
+
+      const uTime = this.gl.getUniformLocation(
+        this.program,
+        `touchEvents[${index}].timeMs`
+      );
+      this.gl.uniform1f(uTime, event.timeMs);
+    }
   }
 
   public addTouchEvent(touchEvent: SurfaceTouchEvent) {
@@ -101,8 +123,8 @@ export class Scene extends Component<Props> {
     );
 
     this.touchEvents.add({ ...touchEvent, ...mappedMousePosition });
+    this.setTouchEvents();
   }
-
 
   override mount() {
     this.canvas = new Canvas({
@@ -133,9 +155,7 @@ export class Scene extends Component<Props> {
 
     const vertices = this.createVertices();
     this.setVertices(vertices);
-    this.setResolution(width, height);
-    this.setTime(time);
-    this.setTouchEvents();
+    this.setState({ timeMs: time, resolution: { width, height } });
 
     requestAnimationFrame(() => {
       this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);
