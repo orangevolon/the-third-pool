@@ -18,4 +18,8 @@ export class Canvas extends Component<Props> {
 
     return canvas;
   }
+
+  unmount(): void {
+    // Nothing to do here
+  }
 }
