@@ -9,5 +9,3 @@ if (!app) {
 
 const root = new Root();
 app.appendChild(root.mount());
-
-root.render();

@@ -18,8 +18,7 @@ export class Root extends Component {
     this.scene.addTouchEvent({
       x: event.clientX,
       y: event.clientY,
-      time: this.timer.currentTime,
-    })
+    });
   };
 
   override mount() {
@@ -29,14 +28,17 @@ export class Root extends Component {
 
     this.timer = new Timer(1_000 / 60);
     this.timer.onTick((time) => {
-      this.scene?.update({ time });
+      this.scene?.update({ offsetY: time / 20 });
     });
+    this.timer.start();
 
     const canvasSize = Math.max(window.innerWidth, window.innerHeight);
     this.scene = new Scene({
-      width: canvasSize,
-      height: canvasSize,
-      time: 0,
+      offsetY: 0,
+      resolution: {
+        width: canvasSize,
+        height: canvasSize,
+      },
     });
 
     this.container.appendChild(this.scene.mount());
@@ -47,15 +49,6 @@ export class Root extends Component {
   override unmount() {
     this.container?.removeEventListener('mousedown', this.updateMousePosition);
     this.timer?.stop();
-
     this.scene?.unmount();
-  }
-
-  override render() {
-    if (this.timer && !this.timer.isRunning) {
-      this.timer.start();
-    }
-
-    this.scene?.render();
   }
 }

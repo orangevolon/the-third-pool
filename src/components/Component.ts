@@ -1,6 +1,6 @@
 export abstract class Component<
   TProps = void,
-  TNode extends HTMLElement = HTMLElement
+  TNode extends HTMLElement = HTMLElement,
 > {
   constructor(props: TProps) {
     this.props = props;
@@ -13,12 +13,8 @@ export abstract class Component<
       ...this.props,
       ...updatedProps,
     };
-
-    this.render();
   }
 
-  unmount(): void {}
-  render(): void {}
-
+  abstract unmount(): void;
   abstract mount(): TNode;
 }

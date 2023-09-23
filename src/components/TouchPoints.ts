@@ -1,27 +1,36 @@
-import { SurfaceTouchEvent } from './types';
+import { TouchEvent } from './types';
 
 export class TouchEventsList {
   constructor(maxSize: number) {
-    this.maxSize = maxSize;
-    this.events = new Array<SurfaceTouchEvent>(this.maxSize).fill({
+    this._maxSize = maxSize;
+    this._events = new Array<TouchEvent>(maxSize).fill({
       x: 0,
       y: 0,
-      time: Number.MAX_SAFE_INTEGER,
+      timeMs: Number.MAX_SAFE_INTEGER,
     });
   }
 
-  events: SurfaceTouchEvent[];
-  maxSize: number;
-  cursor: number = 0;
+  _events: TouchEvent[];
+  _maxSize: number;
+  _cursor: number = 0;
 
-  add(point: SurfaceTouchEvent) {
-    this.events[this.cursor] = point;
-    this.cursor = (this.cursor + 1) % this.maxSize;
+  add(event: TouchEvent) {
+    this.events[this._cursor] = event;
+    this._cursor = (this._cursor + 1) % this._maxSize;
   }
 
-  getData() {
-    return new Float32Array(
-      this.events.flatMap(({ x, y, time }) => [x, y, time])
-    );
+  get latestEvent() {
+    return {
+      event: this._events[this._cursor - 1],
+      index: this._cursor,
+    };
+  }
+
+  get maxSize() {
+    return this._maxSize;
+  }
+
+  get events() {
+    return this._events;
   }
 }

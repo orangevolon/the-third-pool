@@ -5,8 +5,16 @@ export interface Component<TProps = void> {
   onUpdate?: (newProps: TProps) => void;
 }
 
-export interface SurfaceTouchEvent {
+export interface Rect {
+  width: number;
+  height: number;
+}
+
+export interface Point {
   x: number;
   y: number;
-  time: number;
+}
+
+export interface TouchEvent extends Point {
+  timeMs: number;
 }

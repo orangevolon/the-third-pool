@@ -6,14 +6,17 @@ import { Component } from './Component';
 import { resetScene } from '../utils/resetScene';
 import { Canvas } from './Canvas';
 import { mapToConfiningRect } from '../utils/mapToRect';
-import { SurfaceTouchEvent } from './types';
 import { TouchEventsList } from './TouchPoints';
+import { Point, Rect, TouchEvent } from './types';
 
 interface Props {
-  width: number;
-  height: number;
-  time: number;
-  touchEvent?: SurfaceTouchEvent;
+  resolution: Rect;
+  offsetY: number;
+}
+
+interface ShaderState {
+  offsetY: number;
+  timeMs: number;
 }
 
 const MAX_TOUCH_EVENTS = 100;
@@ -28,6 +31,7 @@ export class Scene extends Component<Props> {
   program: WebGLProgram | undefined;
   vertexBuffer: WebGLBuffer | undefined;
   touchEvents: TouchEventsList;
+  startTime: number | undefined;
 
   get gl(): WebGL2RenderingContext {
     if (!this.canvas) throw new Error('Canvas not initialized');
@@ -45,10 +49,14 @@ export class Scene extends Component<Props> {
     this.program = initProgram(this.gl, vsSource, fsSource);
 
     resetScene(this.gl);
+    this.updateTouchEvents(this.touchEvents);
+    this.updateResolution(this.props.resolution);
+    this.updateVertices(this.props.resolution);
+    this.startTime = Date.now();
   }
 
-  private createVertices() {
-    const vertexIds = new Float32Array(this.props.width * this.props.height);
+  private createVertices(width: number, height: number) {
+    const vertexIds = new Float32Array(width * height);
 
     for (let vertexIndex = 0; vertexIndex < vertexIds.length; vertexIndex++) {
       vertexIds[vertexIndex] = vertexIndex;
@@ -57,8 +65,11 @@ export class Scene extends Component<Props> {
     return vertexIds;
   }
 
-  private setVertices(vertices: Float32Array) {
+  private updateVertices(resolution: Rect) {
     if (!this.program) throw new Error('Program not initialized');
+
+    const { width, height } = resolution;
+    const vertices = this.createVertices(width, height);
 
     this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
     const aVertexId = this.gl.getAttribLocation(this.program, 'aVertexId');
@@ -67,52 +78,80 @@ export class Scene extends Component<Props> {
     this.gl.enableVertexAttribArray(aVertexId);
   }
 
-  private setResolution(width: number, height: number) {
+  private updateResolution(resolution: Rect) {
     if (!this.program) throw new Error('Program not initialized');
-    const resolution = this.gl.getUniformLocation(this.program, 'resolution');
-    this.gl.uniform2f(resolution, width, height);
+
+    const { width, height } = resolution;
+    const uResolution = this.gl.getUniformLocation(this.program, 'resolution');
+    this.gl.uniform2f(uResolution, width, height);
   }
 
-  private setTime(time: number) {
+  private updateState(state: ShaderState) {
     if (!this.program) throw new Error('Program not initialized');
-    const uTime = this.gl.getUniformLocation(this.program, 'time');
-    this.gl.uniform1f(uTime, time);
+
+    const { offsetY, timeMs } = state;
+    const uTimeMs = this.gl.getUniformLocation(this.program, 'state.timeMs');
+    this.gl.uniform1f(uTimeMs, timeMs);
+
+    const uOffsetY = this.gl.getUniformLocation(this.program, 'state.offsetY');
+    this.gl.uniform1f(uOffsetY, offsetY);
   }
 
-  private setTouchEvents() {
-    if (!this.program) throw new Error('Program not initialized');
-    const uMousePosition = this.gl.getUniformLocation(
-      this.program,
-      'touchEvent'
-    );
-    this.gl.uniform3fv(uMousePosition, this.touchEvents.getData());
+  private updateTouchEvents(touchEvents: TouchEventsList, latest = false) {
+    const update = (event: TouchEvent, index: number) => {
+      if (!this.program) throw new Error('Program not initialized');
+      const uPoint = this.gl.getUniformLocation(
+        this.program,
+        `touchEvents[${index}].point`
+      );
+      this.gl.uniform2f(uPoint, event.x, event.y);
+
+      const uTime = this.gl.getUniformLocation(
+        this.program,
+        `touchEvents[${index}].timeMs`
+      );
+      this.gl.uniform1f(uTime, event.timeMs);
+    };
+
+    if (latest) {
+      const { event, index } = touchEvents.latestEvent;
+      update(event, index);
+    } else {
+      touchEvents.events.forEach((event, index) => update(event, index));
+    }
   }
 
-  public addTouchEvent(touchEvent: SurfaceTouchEvent) {
+  public addTouchEvent(touchEvent: Point) {
     if (!this.canvas) throw new Error('Canvas not initialized');
+    if (!this.startTime) throw new Error('Start time not initialized');
 
+    const { resolution } = this.props;
     const canvasSize = this.canvas.getBoundingClientRect();
-    const renderSize = { width: this.props.width, height: this.props.height };
-
     const mappedMousePosition = mapToConfiningRect(
       touchEvent,
       canvasSize,
-      renderSize
+      resolution
     );
 
-    this.touchEvents.add({ ...touchEvent, ...mappedMousePosition });
+    this.touchEvents.add({
+      x: mappedMousePosition.x,
+      y: mappedMousePosition.y + this.props.offsetY,
+      timeMs: Date.now() - this.startTime,
+    });
+
+    this.updateTouchEvents(this.touchEvents, true);
   }
 
-
   override mount() {
+    const { width, height } = this.props.resolution;
     this.canvas = new Canvas({
-      width: this.props.width,
-      height: this.props.height,
+      width,
+      height,
       id: 'scene',
     }).mount();
 
     this.prepareScene();
-    this.setTouchEvents();
+    this.render();
 
     return this.canvas;
   }
@@ -127,18 +166,22 @@ export class Scene extends Component<Props> {
     }
   }
 
-  override render() {
+  private render() {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    const { width, height, time } = this.props;
+    if (!this.startTime) throw new Error('Start time not initialized');
 
-    const vertices = this.createVertices();
-    this.setVertices(vertices);
-    this.setResolution(width, height);
-    this.setTime(time);
-    this.setTouchEvents();
-
-    requestAnimationFrame(() => {
-      this.gl.drawArrays(this.gl.POINTS, 0, vertices.length);
+    // Update shader state
+    const timeMs = Date.now() - this.startTime;
+    this.updateState({
+      offsetY: this.props.offsetY,
+      timeMs,
     });
+
+    // Draw
+    const { width, height } = this.props.resolution;
+    const drawSize = width * height;
+    this.gl.drawArrays(this.gl.POINTS, 0, drawSize);
+
+    requestAnimationFrame(this.render.bind(this));
   }
 }

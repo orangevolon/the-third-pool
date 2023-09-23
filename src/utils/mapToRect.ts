@@ -1,12 +1,4 @@
-interface Rect {
-  width: number;
-  height: number;
-}
-
-interface Point {
-  x: number;
-  y: number;
-}
+import { Point, Rect } from '../components/types';
 
 // Fits only to center
 export function mapToConfiningRect(
