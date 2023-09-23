@@ -6,6 +6,7 @@ export class Root extends Component {
   container: HTMLElement | undefined;
   scene: Scene | undefined;
   timer: Timer | undefined;
+  progressTimer: Timer | undefined;
 
   constructor() {
     super();
@@ -32,6 +33,11 @@ export class Root extends Component {
       this.scene?.update({ time });
     });
 
+    this.progressTimer = new Timer(1_000 / 60);
+    this.progressTimer.onTick((time) => {
+      this.scene?.update({ progress: time / 50_000 });
+    });
+
     const canvasSize = Math.max(window.innerWidth, window.innerHeight);
     this.scene = new Scene({
       width: canvasSize,
@@ -48,6 +54,7 @@ export class Root extends Component {
   override unmount() {
     this.container?.removeEventListener('mousedown', this.updateMousePosition);
     this.timer?.stop();
+    this.progressTimer?.stop();
 
     this.scene?.unmount();
   }
@@ -55,6 +62,7 @@ export class Root extends Component {
   override render() {
     if (this.timer && !this.timer.isRunning) {
       this.timer.start();
+      this.progressTimer?.start();
     }
 
     this.scene?.render();

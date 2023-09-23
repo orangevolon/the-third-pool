@@ -8,6 +8,7 @@ struct TouchEvent {
 
 struct State {
   float timeMs;
+  float progress;
   vec2 resolution;
 };
 
@@ -28,7 +29,7 @@ float asymmetricGaussian(float x, float sigma, float mu, float bias) {
   return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
 }
 
-vec2 addTouchPoint(vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
+vec2 addTouchPoints(vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
   // Touch settings
   float touchDropoffMs = 500.0;
   float touchRadius = 10.0;
@@ -57,40 +58,27 @@ vec2 addTouchPoint(vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEv
     pointShift += dirToTouch * dirToTouchEvent * touchRadius;
   }
 
-  return pointShift;
+  return point += pointShift;
 }
 
-void paint(out vec4 vColor, vec2 point, State state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
-  float timeS = state.timeMs / 1000.0;
-  float timeCoeff = timeS / 10.0;
+void paintField(out vec4 color, vec2 point, State state) {
+  float progress = state.progress;
   float freqCoeff = 100.0;
-
-  point += addTouchPoint(point, state, touchEvents);
-
-  // Rotate the pattern
-  float rotationAngleRad = radians(timeCoeff * 10.0);
-  mat2 rotationMatrix = mat2(
-    cos(rotationAngleRad),
-    -sin(rotationAngleRad),
-    sin(rotationAngleRad),
-    cos(rotationAngleRad)
-  );
-  point = rotationMatrix * point;
 
   // Add one more dimension to the pattern
   point = vec2(
     point.x,
-    point.y + 0.1 * sin(point.x * (freqCoeff / 20.0) * sin(timeCoeff))
+    point.y + 0.1 * sin(point.x * (freqCoeff / 20.0) * sin(progress))
   );
 
   // Create stripes
   float intensity =
-    sin(freqCoeff * (6.0 * timeCoeff / 10.0 + point.y / 2.0)) * 0.5 + 0.5;
+    sin(freqCoeff * (6.0 * progress / 10.0 + point.y / 2.0)) * 0.5 + 0.5;
 
   float cutoffValue = 0.1;
   intensity = smoothstep(cutoffValue, cutoffValue - 0.02, intensity) * 0.8;
 
-  vColor = vec4(intensity, intensity, intensity, 1.0);
+  color = vec4(intensity, intensity, intensity, 1.0);
 }
 
 void main() {
@@ -101,5 +89,6 @@ void main() {
   gl_Position = vec4(point.xy, 0, 1);
   gl_PointSize = 5.0;
 
-  paint(vColor, point, state, touchEvents);
+  point = addTouchPoints(point, state, touchEvents);
+  paintField(vColor, point, state);
 }

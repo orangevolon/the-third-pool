@@ -79,6 +79,12 @@ export class Scene extends Component<Props> {
     const uTimeMs = this.gl.getUniformLocation(this.program, 'state.timeMs');
     this.gl.uniform1f(uTimeMs, state.timeMs);
 
+    const uProgress = this.gl.getUniformLocation(
+      this.program,
+      'state.progress'
+    );
+    this.gl.uniform1f(uProgress, this.props.progress);
+
     const uResolution = this.gl.getUniformLocation(
       this.program,
       'state.resolution'
