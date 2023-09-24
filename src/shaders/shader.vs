@@ -29,27 +29,70 @@ float asymmetricGaussian(float x, float sigma, float mu, float bias) {
   return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
 }
 
+vec2 travellingWave(
+  vec2 center,
+  vec2 point,
+  float time_ms,
+  float touch_time_ms,
+  float freq,
+  float propogation,
+  float magnitude,
+  float attenuation
+) {
+  float time = (time_ms - touch_time_ms) / 1000.0;
+  vec2 wavePoint = point - center;
+
+  // Wave shift
+  float waveShift = sin(propogation * length(wavePoint) - freq * time);
+
+  // Wavefront
+  waveShift *= (1.0 - step(freq * time, propogation * length(wavePoint)));
+
+  // Magnitude
+  waveShift *= magnitude;
+
+  // Attenuation
+  waveShift *= exp(-attenuation * length(wavePoint));
+
+  // Direction
+  vec2 pointShift = waveShift * normalize(wavePoint);
+
+  return pointShift;
+}
+
 vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
   // Touch settings
-  float touchDropoffMs = 500.0;
-  float touchRadius = 10.0;
+  float touchDropoffMs = 3500.0;
 
   vec2 pointShift = vec2(0.0, 0.0);
 
   for(int index = 0; index < TOUCH_EVENT_SIZE; ++index) {
     vec2 touchPoint = mapToClipSpace(touchEvents[index].point, resolution);
-    float touchTimeMs = touchEvents[index].timeMs;
+    float touchTime = touchEvents[index].timeMs;
 
-    // Create pinch point bubble
-    float distanceToTouchPoint = distance(point, touchPoint);
+    vec2 touchShift = vec2(0.0, 0.0);
+    
+    // Touch radius
+    touchShift += travellingWave(
+      touchPoint,
+      point,
+      state.timeMs,
+      touchTime,
+      6.0,
+      6.0,
+      0.05,
+      2.0
+    );
 
-    vec2 dirToTouch = sin(distanceToTouchPoint * 100.0) /
-      (distanceToTouchPoint * 1000.0) *
-      normalize(touchPoint - point);
+    // Time falloff
+    touchShift *= asymmetricGaussian(
+      state.timeMs - touchTime, 
+      touchDropoffMs,
+      0.0,
+      1.0
+    );
 
-    float dirToTouchEvent = asymmetricGaussian(state.timeMs - touchTimeMs, touchDropoffMs / 3.0, touchDropoffMs, 0.1);
-
-    pointShift += dirToTouch * dirToTouchEvent * touchRadius;
+    pointShift += touchShift;
   }
 
   return point += pointShift;
@@ -63,26 +106,15 @@ vec2 moveField(vec2 point, ShaderState state) {
   return point + offsetShift;
 }
 
-vec2 addSecondWave(vec2 point, ShaderState state) {
-  float freqCoeff = 10.0;
-  float magnitude = 0.05;
-
-  vec2 pointShift = vec2(
-    0,
-    sin(freqCoeff * point.x)
-  ) * magnitude;
-
-  return point + pointShift;
-}
-
 void paintField(out vec4 color, vec2 point, ShaderState state) {
   float freqCoeff = 100.0;
 
   // Create stripes
-  float intensity = sin(freqCoeff * (10.0 + point.y / 2.0)) * 0.5 + 0.5;
+  float intensity = sin(freqCoeff * point.y) *
+    cos(freqCoeff * point.x) * 0.5 + 0.5;
 
   float cutoffValue = 0.1;
-  intensity = smoothstep(cutoffValue, cutoffValue - 0.02, intensity) * 0.8;
+  intensity = smoothstep(cutoffValue, cutoffValue - 0.02, intensity);
 
   color = vec4(intensity, intensity, intensity, 1.0);
 }
@@ -97,6 +129,6 @@ void main() {
 
   point = moveField(point, state);
   point = addTouchPoints(point, state, touchEvents);
-  point = addSecondWave(point, state);
+  
   paintField(vColor, point, state);
 }
