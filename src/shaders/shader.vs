@@ -1,5 +1,6 @@
 # version 300 es
 const int TOUCH_EVENT_SIZE = 100;
+const float PI = 3.14159;
 
 struct TouchEvent {
   vec2 point;
@@ -23,10 +24,15 @@ vec2 mapToClipSpace(vec2 point, vec2 resolution) {
 }
 
 float asymmetricGaussian(float x, float sigma, float mu, float bias) {
-  x = x - mu; // Shift the function along the x-axis
-  if(x > 0.0)
-    x *= bias;
-  return exp(-pow(x, 2.0) / (2.0 * pow(sigma, 2.0)));
+  float shiftedX = x - mu; // Shift the function along the x-axis
+  float biasedSigma = sigma / bias;
+
+  if(shiftedX > 0.0)
+    shiftedX /= bias;
+  else 
+    shiftedX *= bias;
+
+  return exp(-pow(shiftedX, 2.0) / (2.0 * pow(biasedSigma, 2.0)));
 }
 
 vec2 travellingWave(
@@ -37,16 +43,17 @@ vec2 travellingWave(
   float freq,
   float propogation,
   float magnitude,
-  float attenuation
+  float attenuation,
+  float phase
 ) {
   float time = (time_ms - touch_time_ms) / 1000.0;
   vec2 wavePoint = point - center;
 
   // Wave shift
-  float waveShift = sin(propogation * length(wavePoint) - freq * time);
+  float waveShift = sin(propogation * length(wavePoint) - freq * time - phase);
 
   // Wavefront
-  waveShift *= (1.0 - step(freq * time, propogation * length(wavePoint)));
+  waveShift *= (1.0 - step(freq * time - phase, propogation * length(wavePoint)));
 
   // Magnitude
   waveShift *= magnitude;
@@ -62,7 +69,7 @@ vec2 travellingWave(
 
 vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] touchEvents) {
   // Touch settings
-  float touchDropoffMs = 3500.0;
+  float touchDropoffMs = 10000.0;
 
   vec2 pointShift = vec2(0.0, 0.0);
 
@@ -81,15 +88,16 @@ vec2 addTouchPoints(vec2 point, ShaderState state, TouchEvent[TOUCH_EVENT_SIZE] 
       6.0,
       6.0,
       0.05,
-      2.0
+      2.0,
+      - PI / 2.0
     );
 
     // Time falloff
     touchShift *= asymmetricGaussian(
       state.timeMs - touchTime, 
       touchDropoffMs,
-      0.0,
-      1.0
+      500.0,
+      6.0
     );
 
     pointShift += touchShift;
