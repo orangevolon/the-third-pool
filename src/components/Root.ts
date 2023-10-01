@@ -1,36 +1,35 @@
 import { Component } from './Component';
 import { Scene } from './Scene';
-import { Timer } from './Timer';
+import { ScrollManager } from './ScrollManager';
 
 export class Root extends Component {
   container: HTMLElement | undefined;
   scene: Scene | undefined;
-  timer: Timer | undefined;
+  scrollManager: ScrollManager | undefined;
 
   constructor() {
     super();
   }
 
-  private updateMousePosition = (event: MouseEvent) => {
-    if (!this.timer) throw new Error('Timer not initialized');
-    if (!this.scene) throw new Error('Scene not initialized');
-
-    this.scene.addTouchEvent({
-      x: event.clientX,
-      y: event.clientY,
-    });
-  };
-
   override mount() {
     this.container = document.createElement('div');
     this.container.setAttribute('id', 'container');
-    this.container.addEventListener('mousedown', this.updateMousePosition);
+    this.scrollManager = new ScrollManager(this.container, 0);
 
-    this.timer = new Timer(1_000 / 60);
-    this.timer.onTick((time) => {
-      this.scene?.update({ offsetY: time / 20 });
+    this.container.addEventListener('touchstart', (event) => {
+      for (const touch of event.touches) {
+        this.scene?.addTouchEvent({
+          x: touch.clientX,
+          y: touch.clientY,
+        });
+      }
     });
-    this.timer.start();
+
+    this.scrollManager.onScroll((offsetY) => {
+      this.scene?.update({
+        offsetY,
+      });
+    });
 
     const canvasSize = Math.max(window.innerWidth, window.innerHeight);
     this.scene = new Scene({
@@ -47,8 +46,7 @@ export class Root extends Component {
   }
 
   override unmount() {
-    this.container?.removeEventListener('mousedown', this.updateMousePosition);
-    this.timer?.stop();
+    this.scrollManager?.destroy();
     this.scene?.unmount();
   }
 }

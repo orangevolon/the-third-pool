@@ -18,3 +18,7 @@ export interface Point {
 export interface TouchEvent extends Point {
   timeMs: number;
 }
+
+export interface Destroyable {
+  destroy: () => void;
+}
